@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Level Platformer</title>
+    <style>
+        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #222; }
+        canvas { border: 2px solid #fff; background-color: #3377aa; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Game constants
+        const GRAVITY = 0.5;
+        const PLAYER_MOVE_SPEED = 5;
+        const PLAYER_JUMP_FORCE = 12;
+        const TILE_SIZE = 40;
+
+        // ## GAME STATE MANAGEMENT ##
+        let gameState = 'start'; // 'start', 'playing', 'levelComplete'
+        let score = 0;
+        let currentLevel = 1;
+
+        const levelMap1 = [
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,1,1,1,1,1,0,0,0,0,1,1,1,0,0,0,0,0,0,1,1,1,0,0,2,0,0,1,1,1,1,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0],[0,0,2,0,0,1,1,1,1,0,0,0,2,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,1,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,2,0,3,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1],[1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,2,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]];
+        const levelMap2 = [
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]];
+        const levels = { 1: { map: levelMap1 }, 2: { map: levelMap2 } };
+        let levelWidth;
+
+        const player = { x: 100, y: 400, width: 30, height: 30, velocityX: 0, velocityY: 0, isJumping: false };
+        const camera = { x: 0, y: 0 };
+        const keys = { left: false, right: false, up: false };
+        let collectibles = [];
+        let enemies = [];
+
+        function initializeLevel(levelNumber) {
+            gameState = 'playing';
+            const levelData = levels[levelNumber].map;
+            levelWidth = levelData[0].length * TILE_SIZE;
+            
+            collectibles = [];
+            enemies = [];
+            levelData.forEach((row, rowIndex) => {
+                row.forEach((tile, colIndex) => {
+                    if (tile === 2) {
+                        collectibles.push({ x: colIndex * TILE_SIZE, y: rowIndex * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE });
+                    }
+                });
+            });
+
+            player.x = 100;
+            player.y = 400;
+            player.velocityX = 0;
+            player.velocityY = 0;
+
+            if (levelNumber === 1) {
+                enemies.push({ x: 400, y: 520 - 30, width: 30, height: 30, velocityX: -1 });
+                enemies.push({ x: 900, y: 120 - 30, width: 30, height: 30, velocityX: 1 });
+            } else if (levelNumber === 2) {
+                enemies.push({ x: 400, y: 440 - 30, width: 30, height: 30, velocityX: 1 });
+                enemies.push({ x: 1000, y: 520 - 30, width: 30, height: 30, velocityX: -1.5 });
+            }
+        }
+        
+        function resetGame() {
+            score = 0;
+            currentLevel = 1;
+            initializeLevel(currentLevel);
+        }
+        
+        document.addEventListener('keydown', e => {
+            if (gameState !== 'playing') return;
+            if (e.code === 'ArrowLeft') keys.left = true;
+            if (e.code === 'ArrowRight') keys.right = true;
+            if (e.code === 'ArrowUp') keys.up = true;
+        });
+        document.addEventListener('keyup', e => {
+            if (e.code === 'ArrowLeft') keys.left = false;
+            if (e.code === 'ArrowRight') keys.right = false;
+            if (e.code === 'ArrowUp') keys.up = false;
+        });
+
+        canvas.addEventListener('click', e => {
+            if (gameState === 'start') {
+                resetGame();
+            } else if (gameState === 'levelComplete') {
+                const hasNextLevel = !!levels[currentLevel + 1];
+                if (hasNextLevel) {
+                    const rect = canvas.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const clickY = e.clientY - rect.top;
+                    
+                    const buttonWidth = 200;
+                    const buttonHeight = 50;
+                    const buttonX = (canvas.width - buttonWidth) / 2;
+                    const buttonY = (canvas.height / 2) + 20;
+
+                    if (clickX > buttonX && clickX < buttonX + buttonWidth && clickY > buttonY && clickY < buttonY + buttonHeight) {
+                        currentLevel++;
+                        initializeLevel(currentLevel);
+                    }
+                }
+            }
+        });
+        
+        function update() {
+            updatePlayer();
+            handleCollisions();
+            updateEnemies();
+            updateCamera();
+        }
+        
+        function updatePlayer() {
+            player.velocityX = 0;
+            if (keys.left) player.velocityX = -PLAYER_MOVE_SPEED;
+            if (keys.right) player.velocityX = PLAYER_MOVE_SPEED;
+            if (keys.up && !player.isJumping) {
+                player.velocityY = -PLAYER_JUMP_FORCE;
+                player.isJumping = true;
+            }
+            player.velocityY += GRAVITY;
+            player.x += player.velocityX;
+            player.y += player.velocityY;
+        }
+
+        function handleCollisions() {
+            const currentMap = levels[currentLevel].map;
+            player.x -= player.velocityX;
+            player.y -= player.velocityY;
+            player.x += player.velocityX;
+
+            for (let row = 0; row < currentMap.length; row++) {
+                for (let col = 0; col < currentMap[row].length; col++) {
+                    const tileType = currentMap[row][col];
+                    if (tileType === 1 || tileType === 3) {
+                        const tile = { x: col * TILE_SIZE, y: row * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE };
+                        if (player.x < tile.x + tile.width && player.x + player.width > tile.x && player.y < tile.y + tile.height && player.y + player.height > tile.y) {
+                            if (tileType === 3) gameState = 'levelComplete';
+                            if (player.velocityX > 0) player.x = tile.x - player.width;
+                            else if (player.velocityX < 0) player.x = tile.x + tile.width;
+                        }
+                    }
+                }
+            }
+
+            player.y += player.velocityY;
+            player.isJumping = true;
+             for (let row = 0; row < currentMap.length; row++) {
+                for (let col = 0; col < currentMap[row].length; col++) {
+                    const tileType = currentMap[row][col];
+                    if (tileType === 1 || tileType === 3) {
+                         const tile = { x: col * TILE_SIZE, y: row * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE };
+                         if (player.x < tile.x + tile.width && player.x + player.width > tile.x && player.y < tile.y + tile.height && player.y + player.height > tile.y) {
+                            if (tileType === 3) gameState = 'levelComplete';
+                            if (player.velocityY > 0) {
+                                player.y = tile.y - player.height;
+                                player.velocityY = 0;
+                                player.isJumping = false;
+                            } else if (player.velocityY < 0) {
+                                player.y = tile.y + tile.height;
+                                player.velocityY = 0;
+                            }
+                         }
+                    }
+                }
+            }
+
+            collectibles.forEach((coin, index) => {
+                if (player.x < coin.x + coin.width && player.x + player.width > coin.x && player.y < coin.y + coin.height && player.y + player.height > coin.y) {
+                    collectibles.splice(index, 1);
+                    score += 10;
+                }
+            });
+
+            enemies.forEach((enemy, index) => {
+                if (player.x < enemy.x + enemy.width && player.x + player.width > enemy.x && player.y < enemy.y + enemy.height && player.y + player.height > enemy.y) {
+                    if (player.velocityY > 0 && player.y + player.height < enemy.y + 20) {
+                        enemies.splice(index, 1);
+                        score += 50;
+                        player.velocityY = -PLAYER_JUMP_FORCE / 2;
+                    } else {
+                        initializeLevel(currentLevel);
+                    }
+                }
+            });
+            
+             if (player.y > canvas.height) initializeLevel(currentLevel);
+        }
+
+        function updateEnemies() {
+            const currentMap = levels[currentLevel].map;
+            enemies.forEach((enemy) => {
+                enemy.x += enemy.velocityX;
+                const groundAheadCol = Math.floor((enemy.velocityX > 0 ? enemy.x + enemy.width : enemy.x) / TILE_SIZE);
+                const groundAheadRow = Math.floor((enemy.y + enemy.height + 1) / TILE_SIZE);
+                if (currentMap[groundAheadRow] === undefined || currentMap[groundAheadRow][groundAheadCol] === 0) {
+                     enemy.velocityX *= -1;
+                }
+            });
+        }
+        
+        function updateCamera() {
+            camera.x = player.x - canvas.width / 2 + 100;
+            if (camera.x < 0) camera.x = 0;
+            if (camera.x > levelWidth - canvas.width) camera.x = levelWidth - canvas.width;
+        }
+
+        function drawPlaying() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(-camera.x, -camera.y);
+            drawWorld();
+            drawObjects();
+            ctx.restore();
+            drawHUD();
+        }
+        
+        function drawWorld() {
+            const currentMap = levels[currentLevel].map;
+            const startCol = Math.floor(camera.x / TILE_SIZE);
+            const endCol = Math.ceil((camera.x + canvas.width) / TILE_SIZE);
+            
+            for (let row = 0; row < currentMap.length; row++) {
+                for (let col = startCol; col < endCol; col++) {
+                    if (col < 0 || col >= currentMap[0].length) continue;
+                    const tileType = currentMap[row][col];
+                    if (tileType === 1) {
+                        ctx.fillStyle = '#663300';
+                        ctx.fillRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    } else if (tileType === 3) {
+                        ctx.fillStyle = '#8A2BE2';
+                        ctx.fillRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    }
+                }
+            }
+        }
+
+        function drawObjects() {
+            ctx.fillStyle = '#ffcc00';
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            ctx.fillStyle = 'gold';
+            collectibles.forEach(coin => {
+                ctx.beginPath();
+                ctx.arc(coin.x + coin.width / 2, coin.y + coin.height / 2, coin.width / 2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.fillStyle = '#ff3333';
+            enemies.forEach(enemy => ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height));
+        }
+
+        function drawHUD() {
+            ctx.fillStyle = 'white';
+            ctx.font = '24px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Score: ${score}`, 10, 30);
+            ctx.fillText(`Level: ${currentLevel}`, canvas.width - 100, 30);
+        }
+
+        function drawWinScreen() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'white';
+            ctx.font = '50px Arial';
+            ctx.textAlign = 'center';
+            
+            const hasNextLevel = !!levels[currentLevel + 1];
+            if (hasNextLevel) {
+                ctx.fillText('Level Complete!', canvas.width / 2, canvas.height / 2 - 20);
+                const buttonWidth = 200;
+                const buttonHeight = 50;
+                const buttonX = (canvas.width - buttonWidth) / 2;
+                const buttonY = (canvas.height / 2) + 20;
+                ctx.fillStyle = '#4CAF50';
+                ctx.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
+                ctx.fillStyle = 'white';
+                ctx.font = '30px Arial';
+                ctx.fillText('Next Level', canvas.width / 2, buttonY + 35);
+            } else {
+                ctx.fillText('You Beat The Game!', canvas.width / 2, canvas.height / 2);
+            }
+        }
+
+        function drawStartScreen() {
+            ctx.fillStyle = '#222';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'center';
+
+            ctx.font = '50px Arial';
+            ctx.fillText('Platformer Adventure', canvas.width / 2, 150);
+
+            ctx.font = '24px Arial';
+            ctx.fillText('The Rules are Simple:', canvas.width / 2, 250);
+
+            ctx.font = '20px Arial';
+            ctx.fillText('• Jump on red enemies to defeat them.', canvas.width / 2, 300);
+            ctx.fillText('• Don\'t let them touch you otherwise!', canvas.width / 2, 330);
+            ctx.fillText('• Collect the gold orbs to increase your score.', canvas.width / 2, 360);
+            
+            ctx.font = '30px Arial';
+            ctx.fillStyle = '#4CAF50';
+            ctx.fillText('Click Anywhere to Start', canvas.width / 2, 450);
+        }
+
+        // ## MAIN GAME LOOP ##
+        function gameLoop() {
+            if (gameState === 'start') {
+                drawStartScreen();
+            } else if (gameState === 'playing') {
+                update();
+                drawPlaying();
+            } else if (gameState === 'levelComplete') {
+                drawPlaying(); // Draw final frame of the level
+                drawWinScreen();
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
